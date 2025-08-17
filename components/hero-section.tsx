@@ -82,7 +82,10 @@ export function HeroSection() {
                 size="icon"
                 className="hover:bg-[#0077B5] hover:text-white hover:border-[#0077B5] transition-all duration-300"
                 onClick={() =>
-                  window.open("www.linkedin.com/in/kilanvanloo", "_blank")
+                  window.open(
+                    "https://www.linkedin.com/in/kilanvanloo",
+                    "_blank"
+                  )
                 }
               >
                 <Linkedin className="h-5 w-5" />
