@@ -9,7 +9,7 @@ import { Github, Linkedin, Youtube } from "lucide-react";
 // Mouse Scroll Indicator Component
 function ScrollIndicator() {
   return (
-    <div className="absolute bottom-10 left-1/2 transform -translate-x-4/5 flex flex-col items-center space-y-2">
+    <div className="absolute bottom-10 left-1/2 transform -translate-x-4/5 flex-col items-center space-y-2 hidden md:flex">
       <div className="text-sm text-muted-foreground font-medium">
         Scroll down
       </div>
@@ -22,7 +22,7 @@ function ScrollIndicator() {
 
 export function HeroSection() {
   return (
-    <div className="h-[calc(100vh-200px)] bg-gradient-to-br from-background via-background to-muted/20 border border-b">
+    <div className="min-h-[calc(100vh-200px)] bg-gradient-to-br from-background via-background to-muted/20 border border-b flex items-center">
       <div className="max-w-7xl mx-auto px-4 py-16 h-full flex items-center">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Side - Profile Image */}

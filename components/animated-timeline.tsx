@@ -33,7 +33,7 @@ import {
 } from "react-icons/si";
 import { FaGraduationCap } from "react-icons/fa";
 import { MdGrade } from "react-icons/md";
-import { IconType } from "react-icons";
+import { IconContext, IconType } from "react-icons";
 import { Spade, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,7 +85,11 @@ function SkillBadge({ icon, name }: SkillBadgeProps) {
 
   return (
     <Badge variant="outline">
-      {IconComponent && <IconComponent className="w-4 h-4" />}
+      {IconComponent && (
+        <IconContext.Provider value={{ color: "#760604" }}>
+          <IconComponent className="w-4 h-4" />
+        </IconContext.Provider>
+      )}
       {name}
     </Badge>
   );
@@ -155,32 +159,53 @@ export function AnimatedTimeline() {
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen size and initialize visible items
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+
+      // For mobile, make first few items visible by default
+      if (mobile) {
+        setVisibleItems(
+          new Set(timelineData.slice(0, 2).map((item) => item.id))
+        );
+      }
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const itemId = entry.target.getAttribute("data-item-id");
-            if (itemId) {
-              setVisibleItems((prev) => new Set([...prev, itemId]));
-              setActiveItem(itemId);
-            }
+          const itemId = entry.target.getAttribute("data-item-id");
+          if (itemId && entry.isIntersecting) {
+            setVisibleItems((prev) => new Set([...prev, itemId]));
+            setActiveItem(itemId);
           }
         });
       },
       {
-        threshold: 0.5,
-        rootMargin: "-100px 0px",
+        threshold: 0.1,
+        rootMargin: isMobile ? "100px 0px 200px 0px" : "-100px 0px",
       }
     );
 
-    Object.values(itemRefs.current).forEach((ref) => {
-      if (ref) observer.observe(ref);
-    });
+    // Only observe after a short delay to ensure refs are set
+    setTimeout(() => {
+      Object.values(itemRefs.current).forEach((ref) => {
+        if (ref) observer.observe(ref);
+      });
+    }, 100);
 
     return () => observer.disconnect();
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -208,173 +233,331 @@ export function AnimatedTimeline() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div ref={containerRef} className="max-w-5xl mx-auto px-4 py-16">
-        <div className="relative">
-          <div className="absolute left-1/2 transform -translate-x-1/2 w-1 bg-slate-800 h-full rounded-full overflow-hidden">
+  // Mobile Timeline Component
+  const MobileTimeline = () => (
+    <div className="px-4 py-8">
+      <div className="space-y-12">
+        {timelineData.map((item, index) => {
+          const isVisible = visibleItems.has(item.id);
+          const isActive = activeItem === item.id;
+
+          return (
             <div
-              className="w-full bg-gradient-to-b from-primary via-secondary to-accent rounded-full transition-all duration-300 ease-out"
-              style={{ height: `${scrollProgress * 100}%` }}
-            />
-          </div>
-
-          <div className="space-y-16">
-            {timelineData.map((item, index) => {
-              const isVisible = visibleItems.has(item.id);
-              const isActive = activeItem === item.id;
-              const isLeft = index % 2 === 0;
-
-              return (
-                <div
-                  key={item.id}
-                  ref={(el) => {
-                    itemRefs.current[item.id] = el;
-                  }}
-                  data-item-id={item.id}
-                  className="relative flex items-center justify-between"
-                >
-                  {/* Date on the opposite side */}
+              key={item.id}
+              ref={(el) => {
+                itemRefs.current[item.id] = el;
+              }}
+              data-item-id={item.id}
+              className={`relative transition-all duration-700 ease-out ${
+                isVisible
+                  ? "translate-y-0 opacity-100 scale-100"
+                  : "translate-y-8 opacity-0 scale-95"
+              }`}
+            >
+              {/* Mobile Timeline Line */}
+              <div className="absolute left-6 top-0 w-0.5 h-full">
+                {index < timelineData.length - 1 && (
                   <div
-                    className={`w-5/12 flex ${
-                      isLeft ? "justify-end pr-8" : "justify-start pl-8"
-                    } transition-all duration-700 ease-out ${
-                      isVisible
-                        ? "translate-x-0 opacity-100 scale-100"
-                        : isLeft
-                        ? "translate-x-12 opacity-0 scale-95"
-                        : "-translate-x-12 opacity-0 scale-95"
-                    }`}
-                  >
-                    <div
-                      className={`text-right ${
-                        isLeft ? "text-right" : "text-left"
-                      }`}
-                    >
-                      <div className="font-serif text-3xl font-light text-slate-200 tracking-wider">
-                        {item.date.split(",")[0]}
-                      </div>
-                      {item.date.includes(",") && (
-                        <div className="font-sans text-sm font-medium text-slate-400 uppercase tracking-widest mt-1">
-                          {item.date.split(",")[1]?.trim()}
-                        </div>
-                      )}
+                    className="w-full bg-gradient-to-b from-primary via-secondary to-accent transition-all duration-500"
+                    style={{
+                      height: isVisible ? "100%" : "0%",
+                      transition: "height 0.5s ease-out",
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Mobile Timeline Dot */}
+              <div
+                className={`relative z-20 w-4 h-4 rounded-full border-2  shadow-lg transition-all duration-500 ${
+                  typeColors[item.type]
+                } ${
+                  isVisible ? "scale-100 opacity-100" : "scale-75 opacity-50"
+                } ${
+                  isActive
+                    ? "animate-pulse scale-125 shadow-xl shadow-cyan-400/50"
+                    : ""
+                }`}
+              />
+
+              {/* Mobile Card */}
+              <div className="ml-8 -mt-2">
+                {/* Date Badge */}
+                <div className="mb-3">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full  border ">
+                    <div className="font-serif text-lg font-light">
+                      {item.date.split(",")[0]}
                     </div>
-                  </div>
-
-                  <div className="absolute left-1/2 transform -translate-x-1/2 z-20">
-                    <div
-                      className={`w-8 h-8 rounded-full border-4 border-slate-900 shadow-lg transition-all duration-500 cursor-pointer ${
-                        typeColors[item.type]
-                      } ${
-                        isVisible
-                          ? "scale-100 opacity-100"
-                          : "scale-75 opacity-50"
-                      } ${
-                        isActive
-                          ? "animate-pulse scale-110 shadow-xl shadow-cyan-400/50"
-                          : ""
-                      }`}
-                      onClick={() => handleCardClick(item.website)}
-                    />
-                  </div>
-
-                  <div
-                    className={`w-5/12 transition-all duration-700 ease-out ${
-                      isVisible
-                        ? "translate-x-0 opacity-100 scale-100"
-                        : isLeft
-                        ? "-translate-x-12 opacity-0 scale-95"
-                        : "translate-x-12 opacity-0 scale-95"
-                    } ${isActive ? "scale-105 z-10" : ""}`}
-                  >
-                    <Card
-                      className={`shadow-xl hover:shadow-2xl transition-all duration-500  backdrop-blur-sm cursor-pointer group overflow-hidden ${
-                        isActive
-                          ? "ring-2 ring-primary/50 shadow-primary/20"
-                          : ""
-                      }`}
-                      onClick={() => handleCardClick(item.website)}
-                    >
-                      <CardContent className="flex flex-col gap-y-2">
-                        <div className="relative flex items-center justify-between">
-                          {item.logo && (
-                            <Image
-                              src={item.logo}
-                              alt={`${item.company} logo`}
-                              height={33}
-                              width={160}
-                            />
-                          )}
-                          {item.company === "Ace High Club" && (
-                            <Spade className="w-10 h-10 text-primary" />
-                          )}
-                          {item.company === "Studently" && (
-                            <Image
-                              src="/studently-logo.svg"
-                              alt="Studently logo"
-                              height={33}
-                              width={33}
-                            />
-                          )}
-                          <div className="text-right">
-                            <div className="text-sm font-semibold text-foreground">
-                              {item.company}
-                            </div>
-                            {item.location && (
-                              <div className="text-xs text-muted-foreground">
-                                {item.location}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <Separator />
-
-                        <h3 className="text-2xl font-bold mb-3">
-                          {item.title}
-                        </h3>
-                        <p className="leading-relaxed text-base">
-                          {item.description}
-                        </p>
-
-                        {/* Skills Section */}
-                        {item.skills && item.skills.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-slate-700">
-                            <h4 className="text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide">
-                              Technologies
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {item.skills.map((skill, skillIndex) => (
-                                <SkillBadge
-                                  key={skillIndex}
-                                  icon={skill.icon}
-                                  name={skill.name}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* YouTube Video Section */}
-                        {item.videoId && (
-                          <YouTubePlayer
-                            videoId={item.videoId}
-                            title={item.title}
-                          />
-                        )}
-
-                        {/* Downloads Section */}
-                        {item.downloads && item.downloads.length > 0 && (
-                          <Downloads downloads={item.downloads} />
-                        )}
-                      </CardContent>
-                    </Card>
+                    {item.date.includes(",") && (
+                      <div className="font-sans text-xs font-medium  uppercase">
+                        {item.date.split(",")[1]?.trim()}
+                      </div>
+                    )}
                   </div>
                 </div>
-              );
-            })}
+
+                <Card
+                  className={`shadow-lg hover:shadow-xl transition-all duration-500 border backdrop-blur-sm cursor-pointer group overflow-hidden ${
+                    isActive ? "ring-2 ring-primary/50 shadow-primary/20" : ""
+                  }`}
+                  onClick={() => handleCardClick(item.website)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      {item.logo && (
+                        <Image
+                          src={item.logo}
+                          alt={`${item.company} logo`}
+                          height={24}
+                          width={120}
+                          className="object-contain"
+                        />
+                      )}
+                      {item.company === "Ace High Club" && (
+                        <Spade className="w-6 h-6 text-primary" />
+                      )}
+                      {item.company === "Studently" && (
+                        <Image
+                          src="/studently-logo.svg"
+                          alt="Studently logo"
+                          height={24}
+                          width={24}
+                        />
+                      )}
+                      <div className="text-right ml-2">
+                        <div className="text-sm font-semibold text-foreground">
+                          {item.company}
+                        </div>
+                        {item.location && (
+                          <div className="text-xs text-muted-foreground">
+                            {item.location}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <Separator className="mb-3" />
+
+                    <h3 className="text-lg font-bold mb-2 group-hover:text-accent transition-colors duration-300">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed mb-3">
+                      {item.description}
+                    </p>
+
+                    {/* Skills Section */}
+                    {item.skills && item.skills.length > 0 && (
+                      <div className="mb-3">
+                        <h4 className="text-xs font-semibold  mb-2 uppercase tracking-wide">
+                          Technologies
+                        </h4>
+                        <div className="flex flex-wrap gap-1">
+                          {item.skills.map((skill, skillIndex) => (
+                            <SkillBadge
+                              key={skillIndex}
+                              icon={skill.icon}
+                              name={skill.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* YouTube Video Section */}
+                    {item.videoId && (
+                      <YouTubePlayer
+                        videoId={item.videoId}
+                        title={item.title}
+                      />
+                    )}
+
+                    {/* Downloads Section */}
+                    {item.downloads && item.downloads.length > 0 && (
+                      <Downloads downloads={item.downloads} />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div ref={containerRef} className="max-w-5xl mx-auto py-16">
+        {isMobile ? (
+          <MobileTimeline />
+        ) : (
+          <div className="px-4">
+            <div className="relative">
+              <div className="absolute left-1/2 transform -translate-x-1/2 w-1 h-full rounded-full overflow-hidden">
+                <div
+                  className="w-full bg-gradient-to-b from-primary via-secondary to-accent rounded-full transition-all duration-300 ease-out"
+                  style={{ height: `${scrollProgress * 100}%` }}
+                />
+              </div>
+
+              <div className="space-y-16">
+                {timelineData.map((item, index) => {
+                  const isVisible = visibleItems.has(item.id);
+                  const isActive = activeItem === item.id;
+                  const isLeft = index % 2 === 0;
+
+                  return (
+                    <div
+                      key={item.id}
+                      ref={(el) => {
+                        itemRefs.current[item.id] = el;
+                      }}
+                      data-item-id={item.id}
+                      className="relative flex items-center justify-between"
+                    >
+                      {/* Date on the opposite side */}
+                      <div
+                        className={`w-5/12 flex ${
+                          isLeft ? "justify-end pr-8" : "justify-start pl-8"
+                        } transition-all duration-700 ease-out ${
+                          isVisible
+                            ? "translate-x-0 opacity-100 scale-100"
+                            : isLeft
+                            ? "translate-x-12 opacity-0 scale-95"
+                            : "-translate-x-12 opacity-0 scale-95"
+                        }`}
+                      >
+                        <div
+                          className={`text-right ${
+                            isLeft ? "text-right" : "text-left"
+                          }`}
+                        >
+                          <div className="font-serif text-3xl font-light tracking-wider">
+                            {item.date.split(",")[0]}
+                          </div>
+                          {item.date.includes(",") && (
+                            <div className="font-sans text-sm font-medium  uppercase tracking-widest mt-1">
+                              {item.date.split(",")[1]?.trim()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="absolute left-1/2 transform -translate-x-1/2 z-20">
+                        <div
+                          className={`w-8 h-8 rounded-full border-2 border-slate-900 shadow-lg transition-all duration-500 cursor-pointer ${
+                            typeColors[item.type]
+                          } ${
+                            isVisible
+                              ? "scale-100 opacity-100"
+                              : "scale-75 opacity-50"
+                          } ${
+                            isActive
+                              ? "animate-pulse scale-110 shadow-xl shadow-cyan-400/50"
+                              : ""
+                          }`}
+                          onClick={() => handleCardClick(item.website)}
+                        />
+                      </div>
+
+                      <div
+                        className={`w-5/12 transition-all duration-700 ease-out ${
+                          isVisible
+                            ? "translate-x-0 opacity-100 scale-100"
+                            : isLeft
+                            ? "-translate-x-12 opacity-0 scale-95"
+                            : "translate-x-12 opacity-0 scale-95"
+                        } ${isActive ? "scale-105 z-10" : ""}`}
+                      >
+                        <Card
+                          className={`shadow-xl hover:shadow-2xl transition-all duration-500  backdrop-blur-sm cursor-pointer group overflow-hidden ${
+                            isActive
+                              ? "ring-2 ring-primary/50 shadow-primary/20"
+                              : ""
+                          }`}
+                          onClick={() => handleCardClick(item.website)}
+                        >
+                          <CardContent className="flex flex-col gap-y-2">
+                            <div className="relative flex items-center justify-between">
+                              {item.logo && (
+                                <Image
+                                  src={item.logo}
+                                  alt={`${item.company} logo`}
+                                  height={33}
+                                  width={160}
+                                />
+                              )}
+                              {item.company === "Ace High Club" && (
+                                <Spade className="w-10 h-10 text-primary" />
+                              )}
+                              {item.company === "Studently" && (
+                                <Image
+                                  src="/studently-logo.svg"
+                                  alt="Studently logo"
+                                  height={33}
+                                  width={33}
+                                />
+                              )}
+                              <div className="text-right">
+                                <div className="text-sm font-semibold text-foreground">
+                                  {item.company}
+                                </div>
+                                {item.location && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {item.location}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Separator />
+
+                            <h3 className="text-2xl font-bold mb-3">
+                              {item.title}
+                            </h3>
+                            <p className="leading-relaxed text-base">
+                              {item.description}
+                            </p>
+
+                            {/* Skills Section */}
+                            {item.skills && item.skills.length > 0 && (
+                              <div className="mt-4 pt-4 border-t border-slate-700">
+                                <h4 className="text-sm font-semibold  mb-2 uppercase tracking-wide">
+                                  Technologies
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {item.skills.map((skill, skillIndex) => (
+                                    <SkillBadge
+                                      key={skillIndex}
+                                      icon={skill.icon}
+                                      name={skill.name}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* YouTube Video Section */}
+                            {item.videoId && (
+                              <YouTubePlayer
+                                videoId={item.videoId}
+                                title={item.title}
+                              />
+                            )}
+
+                            {/* Downloads Section */}
+                            {item.downloads && item.downloads.length > 0 && (
+                              <Downloads downloads={item.downloads} />
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
