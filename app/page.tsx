@@ -1,6 +1,7 @@
-import { AnimatedTimeline } from "@/components/animated-timeline";
 import { HeroSection } from "@/components/hero-section";
 import { ModeToggle } from "@/components/ui/mode-toggle";
+import { TimelineDesktop } from "@/components/timeline-desktiop";
+import { TimelineMobile } from "@/components/timeline-mobile";
 
 export default function Home() {
   return (
@@ -15,8 +16,9 @@ export default function Home() {
       </div>
 
       {/* Animated Timeline with overlap */}
-      <div className="relative z-20">
-        <AnimatedTimeline />
+      <div className="z-20">
+        <TimelineDesktop />
+        <TimelineMobile />
       </div>
     </main>
   );

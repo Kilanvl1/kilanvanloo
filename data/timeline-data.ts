@@ -24,6 +24,24 @@ export interface TimelineItem {
 
 export const timelineData: TimelineItem[] = [
   {
+    id: "0",
+    date: "2025, September",
+    title: "MSc Computer Science",
+    description:
+      "Started my MSc Computer Science (joint) degree at the University of Amsterdam and the Vrije Universiteit Amsterdam",
+    type: "education",
+    company: "UvA & VU",
+    logo: "/uva-logo.png",
+    website: "https://www.vu.nl/",
+    location: "Amsterdam",
+    skills: [
+      {
+        icon: "grade",
+        name: "Track: Foundations and Concurrency",
+      },
+    ],
+  },
+  {
     id: "1",
     date: "2025, February",
     title: "Full Stack Developer",
